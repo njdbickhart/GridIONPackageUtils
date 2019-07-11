@@ -19,7 +19,7 @@ import seaborn as sns
 import pandas as pd
 import numpy as np
 import collections
-from pyfastq_reader import fastq_reader
+#from pyfastq_reader import fastq_reader
 
 plt.style.use("seaborn-colorblind")
 
