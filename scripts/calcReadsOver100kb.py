@@ -52,7 +52,8 @@ intSum = np.sum(lenover100)
 totXCov = totSum / 2800000000
 intXCov = intSum / 2800000000
 
-print(f'TotalLen {totLen}\tAbove 100kb len {intLen}')
-print(f'Total Median {totMedian}')
-print(f'Total sum {totSum}\tAbove 100kb sum {intSum}')
-print(f'Total Xcov {totXCov}\tAbove 100kb cov {intXCov}')
+#print("TotalLen {}\tAbove 100kb len {}".format(str(totLen), str(intLen)))
+#print("Total Median {}".format(str(totMedian)))
+#print("Total sum {}\tAbove 100kb sum {}".format(str(totSum), str(intSum)))
+#print("Total Xcov {}\tAbove 100kb cov {}".format(str(totXCov), str(intXCov)))
+print("\t".join([str(x) for x in [totLen,intLen,totMedian,totSum,intSum,totXCov,intXCov]]))
