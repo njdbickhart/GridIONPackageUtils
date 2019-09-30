@@ -6,12 +6,13 @@ disclaimer = """
 # -- Andy Hauser <Andreas.Hauser@LMU.de>
 # PLEASE NOTE: this script was written by Andy Hauser and is forked from:
 # https://github.com/ahcm/longread_plots.git
+# Modifications were made to enable its use in a snakemake pipeline
 """
 
 import sys
 import os
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('Agg')   # Stop it from using an interactive backend
 import matplotlib.mlab as mlab
 import matplotlib.pyplot as plt
 import datetime
@@ -51,61 +52,68 @@ def fastq_reader_fh(infile):
       yield name, seq, qual
       return
 
-def get_fastq_info(filename):
-  seq_lengths = []
-  mean_qualities = []
-  kmers_start = []
-  kmers_end = []
-  nts_A = []
-  nts_G = []
-  nts_T = []
-  nts_C = []
-  nts_U = []
-  channels = []
-  start_times = []
+class fastq_info:
+
+    def __init__(self):
+        seq_lengths = []
+        mean_qualities = []
+        kmers_start = []
+        kmers_end = []
+        nts_A = []
+        nts_G = []
+        nts_T = []
+        nts_C = []
+        nts_U = []
+        channels = []
+        start_times = []
+
+    def get_pddf(self):
+        df = pd.DataFrame({ "seq_length": self.seq_lengths,
+                            "mean_quality": self.mean_qualities,
+                            "kmers_start": self.kmers_start,
+                            "kmers_end": self.kmers_end,
+                            "nt_A": self.nts_A,
+                            "nt_G": self.nts_G,
+                            "nt_T": self.nts_T,
+                            "nt_C": self.nts_C,
+                            "nt_U": self.nts_U,
+                            "channels": self.channels,
+                            "start_times": self.start_times})
+        df['start_times'] = df['start_times'].astype('datetime64[s]')
+        return df.sort_values(by=['start_times'])
+
+def get_fastq_info(filename, fqinfo):
 
   for head, seq, qual in fastq_reader_fh(open(filename, 'r')):
     name,comment = head.split(" ", 1)
 
-    seq_lengths.append(len(seq))
+    fqinfo.seq_lengths.append(len(seq))
 
-    mean_qualities.append(round(np.mean(bytearray(qual, "ascii")) - 33, 2))
+    fqinfo.mean_qualities.append(round(np.mean(bytearray(qual, "ascii")) - 33, 2))
 
-    kmers_start.append(seq[0:4])
-    kmers_end.append(seq[-4:])
+    fqinfo.kmers_start.append(seq[0:4])
+    fqinfo.kmers_end.append(seq[-4:])
 
     ntc = collections.Counter()
     ntc.update(seq)
-    nts_A.append(ntc['A'])
-    nts_G.append(ntc['G'])
-    nts_T.append(ntc['T'])
-    nts_C.append(ntc['C'])
-    nts_U.append(ntc['U'])
+    fqinfo.nts_A.append(ntc['A'])
+    fqinfo.nts_G.append(ntc['G'])
+    fqinfo.nts_T.append(ntc['T'])
+    fqinfo.nts_C.append(ntc['C'])
+    fqinfo.nts_U.append(ntc['U'])
 
     # PromethION/MinION
     info = dict(part.split("=") for part in comment.split(" "))
 
     if "ch" in info:
       ch = int(info["ch"])
-      channels.append(ch)
+      fqinfo.channels.append(ch)
 
     if "start_time" in info:
       start_time = info["start_time"]
-      start_times.append(start_time[0:-1].replace("T", " "))
+      fqinfo.start_times.append(start_time[0:-1].replace("T", " "))
 
-  df = pd.DataFrame({ "seq_length": seq_lengths,
-                      "mean_quality": mean_qualities,
-                      "kmers_start": kmers_start,
-                      "kmers_end": kmers_end,
-                      "nt_A": nts_A,
-                      "nt_G": nts_G,
-                      "nt_T": nts_T,
-                      "nt_C": nts_C,
-                      "nt_U": nts_U,
-                      "channels": channels,
-                      "start_times": start_times})
-  df['start_times'] = df['start_times'].astype('datetime64[s]')
-  return df.sort_values(by=['start_times'])
+    return fqinfo
 
 def xlabel_pos_right(ax):
   label = ax.xaxis.get_label()
@@ -411,23 +419,28 @@ def plot_fastq_info(df):
 
 
 ## MAIN ##
+if __name__ == '__main__':
+    print(disclaimer, file=sys.stderr)
 
-print(disclaimer, file=sys.stderr)
+    if len(sys.argv) < 3:
+      print("USAGE: " + sys.argv[0] + " outputbasename fastq_file_directory\n")
 
-if len(sys.argv) < 2:
-  print("USAGE: " + sys.argv[0] + " FASTQ_File(s)\n")
+    files = [x for x in os.listdir(sys.argv[2]) if x.endswith(".fastq")]
 
-for filename in sys.argv[1:]:
+    if len(files) < 1:
+        print("Error! Could not find any fastq files in directory: " + sys.argv[2])
+        sys.exit(-1)
 
-  basename = os.path.basename(filename)
+    basename = sys.argv[1]
+    df_filename = basename + "-summary_stats.tab"
+    data = fastq_info()
 
-  df_filename = basename + ".df.tsv"
-  if os.path.isfile(df_filename): # read alreads computed dataframe
-    df = pd.read_csv(df_filename, sep="\t", encoding='utf-8', parse_dates=[11] )
-  else:
-    df = get_fastq_info(filename)
+    for filename in files:
+        data = get_fastq_info(filename, data)
+
+    df = data.get_pddf()
+
+    print(df.describe())
     df.to_csv(df_filename, sep='\t', encoding='utf-8')
-
-  print(df.describe())
-  plt = plot_fastq_info(df)
-  plt.savefig(basename + "-lrplots.png")
+    plt = plot_fastq_info(df)
+    plt.savefig(basename + "-lrplots.png")

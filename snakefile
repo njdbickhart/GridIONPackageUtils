@@ -39,12 +39,13 @@ rule run_summary_plot:
     input:
         "./{dir}/{sub}/fastq_pass/"
     output:
-        "read_plots/{dir}-lrplots.png"
+        "read_plots/{dir}-lrplots.png",
+        "read_summaries/{dir}-summary_stats.tab"
     shell:
         """
         todo: rewrite lrplots script to take output basename and input folder in arguments
         """
-        
+
 rule generate_tab_results:
     input:
         "./{dir}/{sub}/fastq_pass/"
@@ -54,5 +55,5 @@ rule generate_tab_results:
         """
         todo: summarize read counts and everything else in a lightweight script
         """
-        
+
 #rule delete_everything:
