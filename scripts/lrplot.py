@@ -55,17 +55,17 @@ def fastq_reader_fh(infile):
 class fastq_info:
 
     def __init__(self):
-        seq_lengths = []
-        mean_qualities = []
-        kmers_start = []
-        kmers_end = []
-        nts_A = []
-        nts_G = []
-        nts_T = []
-        nts_C = []
-        nts_U = []
-        channels = []
-        start_times = []
+        self.seq_lengths = []
+        self.mean_qualities = []
+        self.kmers_start = []
+        self.kmers_end = []
+        self.nts_A = []
+        self.nts_G = []
+        self.nts_T = []
+        self.nts_C = []
+        self.nts_U = []
+        self.channels = []
+        self.start_times = []
 
     def get_pddf(self):
         df = pd.DataFrame({ "seq_length": self.seq_lengths,
